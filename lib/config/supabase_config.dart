@@ -12,11 +12,11 @@ class SupabaseConfig {
     defaultValue: _defaultAnonKey,
   );
 
-  static const _defaultUrl = 'https://obtporpfzgkpqrdbqjsm.supabase.co';
+  static const _defaultUrl = 'https://lpaxfmvtlichxgmmyjus.supabase.co';
 
-  /// Dashboard anon JWT (header + payload + provided signature).
+  /// Dashboard publishable key (anon). Passed to Supabase.initialize as publishableKey.
   static const _defaultAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9idHBvcnBmemdrcHFyZGJxanNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3NTQzMjksImV4cCI6MjEwNDMyNDMyOX0.oN9HLgHuMFb-f1fPHSPWCFyyaqUakB_V8URk5Ax-3-k';
+      'sb_publishable_6c-nwQs5xYWADcjsi63tgQ_Xfn9WQzA';
 
   static bool get isConfigured =>
       url.trim().isNotEmpty && anonKey.trim().isNotEmpty;

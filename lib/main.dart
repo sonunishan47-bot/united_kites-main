@@ -1,14 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'screens/role_gate_screen.dart';
+import 'config/supabase_config.dart';
+import 'screens/login_screen.dart';
 import 'screens/shell.dart';
 import 'models/enums.dart';
 import 'services/billing_repository.dart';
 import 'state/billing_controller.dart';
 import 'theme/app_theme.dart';
 
+/// Unauthenticated users stay on [AuthRoutes.login]. A session opens [AuthRoutes.pos].
+class AuthRoutes {
+  const AuthRoutes._();
+
+  static const boot = '/boot';
+  static const login = '/login';
+  static const pos = '/pos';
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (SupabaseConfig.isConfigured) {
+    try {
+      await Supabase.initialize(
+        url: SupabaseConfig.url,
+        publishableKey: SupabaseConfig.anonKey,
+      ).timeout(const Duration(seconds: 6));
+    } catch (_) {
+      // Local cache still boots. BillingRepository retries the connection.
+    }
+  }
   final repository = await BillingRepository.create();
   final controller = BillingController(repository);
   runApp(UnitedKitesApp(controller: controller));
@@ -42,6 +63,7 @@ class _MaterialHost extends StatefulWidget {
 }
 
 class _MaterialHostState extends State<_MaterialHost> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
   UserSession? _session;
   bool _ar = false;
   bool _dark = false;
@@ -83,26 +105,59 @@ class _MaterialHostState extends State<_MaterialHost> {
     final dark = widget.controller.settings.options.darkTheme;
     final loading = widget.controller.loading;
     if (session == _session && ar == _ar && dark == _dark && loading == _loading) return;
+    final wasLoading = _loading;
+    final wasSignedIn = _session != null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       setState(_capture);
+      _syncAuthRoute(wasLoading: wasLoading, wasSignedIn: wasSignedIn);
     });
+  }
+
+  String get _authRoute {
+    if (_loading) return AuthRoutes.boot;
+    if (_session == null) return AuthRoutes.login;
+    return AuthRoutes.pos;
+  }
+
+  void _syncAuthRoute({required bool wasLoading, required bool wasSignedIn}) {
+    if (wasLoading == _loading && wasSignedIn == (_session != null)) return;
+    final nav = _navigatorKey.currentState;
+    if (nav == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncAuthRoute(wasLoading: wasLoading, wasSignedIn: wasSignedIn);
+      });
+      return;
+    }
+    nav.pushNamedAndRemoveUntil(_authRoute, (_) => false);
+  }
+
+  Route<void> _onGenerateRoute(RouteSettings settings) {
+    final name = _authRoute;
+    final page = switch (name) {
+      AuthRoutes.boot => const _BootScreen(),
+      AuthRoutes.login => const LoginScreen(),
+      _ => const BillingShell(),
+    };
+    return MaterialPageRoute<void>(
+      settings: RouteSettings(name: name, arguments: settings.arguments),
+      builder: (_) => page,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final ar = _ar;
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'United Kites',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: _dark ? ThemeMode.dark : ThemeMode.light,
-      home: _loading
-          ? const _BootScreen()
-          : _session == null
-              ? const RoleGateScreen()
-              : const BillingShell(),
+      initialRoute: _authRoute,
+      onGenerateRoute: _onGenerateRoute,
       builder: (context, child) {
         return Directionality(
           textDirection: ar ? TextDirection.rtl : TextDirection.ltr,

@@ -5,14 +5,17 @@ import '../screens/shell.dart';
 import '../state/billing_controller.dart';
 import '../widgets/company_header.dart';
 
-class RoleGateScreen extends StatefulWidget {
-  const RoleGateScreen({super.key});
+/// Role login for the POS. Admin, Partner, Van 1, and Van 2 each unlock
+/// with their own PIN. A successful sign-in writes [UserSession], and the
+/// app router replaces this route with the sales shell.
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
   @override
-  State<RoleGateScreen> createState() => _RoleGateScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _RoleGateScreenState extends State<RoleGateScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   String? error;
   bool _busy = false;
 
